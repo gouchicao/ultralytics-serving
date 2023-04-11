@@ -1,0 +1,7 @@
+onnx
+onnxruntime
+ultralytics
+fastapi[all]
+gunicorn
+aiofiles
+pytest
