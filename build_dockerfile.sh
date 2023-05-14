@@ -13,7 +13,7 @@ build_image_and_push() {
         # --push 推送到 Docker Hub
         # --rm 成功构建后删除中间容器
         # docker buildx build --platform=linux/$platform --pull --rm -f $dockerfile -t wangjunjian/$app_name:$platform "." --push
-        docker buildx build --platform=linux/$platform --rm -f $dockerfile -t wangjunjian/$app_name:$platform "."
+        docker buildx build --progress=plain --platform=linux/$platform --rm -f $dockerfile -t wangjunjian/$app_name:$platform "."
         echo "💯\n"
     done
 }
