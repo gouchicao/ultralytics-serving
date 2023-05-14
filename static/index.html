@@ -14,10 +14,13 @@
                 <li><a href="redoc" style="text-decoration: none">ReDoc</a></li>
             </list>
             <table width="100%">
+                <tr style="font-size: x-large;"><th>原图</th><th>预测图</th></tr>
+                {% for image in images %}
                 <tr>
-                    <td><img src="static/images/demo1.jpg" style="margin: 0 auto; width: 100%;" /></td>
-                    <td><img src="static/images/demo2.jpg" style="margin: 0 auto; width: 100%;" /></td>
+                    <td><img src="/static/images/source/{{image}}" style="margin: 0 auto; width: 100%;" /></td>
+                    <td><img src="/static/images/target/{{image}}" style="margin: 0 auto; width: 100%;" /></td>
                 </tr>
+                {% endfor %}
             </table>
         </div>
     </body>

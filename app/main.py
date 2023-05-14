@@ -1,4 +1,3 @@
-import yaml
 from fastapi import FastAPI, Request
 from fastapi.openapi.docs import (
     get_redoc_html,
@@ -8,15 +7,23 @@ from fastapi.openapi.docs import (
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from .routers import detect
+from .config import Config
+from .models import Models
+from .utils import file
 
 
-config = yaml.load(open("app/config.yaml", "r"), Loader=yaml.FullLoader)
+config = Config()
 
-app = FastAPI(title=config["title"], version=config["version"], 
+app = FastAPI(title=config.title, version=config.version, 
               docs_url=None, redoc_url=None)
 
 app.include_router(detect.router, prefix="/detect", tags=["目标检测"])
 
+# 通过配置动态增加 Router
+# eval('app.include_router(detect.router, prefix="/detect", tags=["目标检测"])')
+for statement in config.statements:
+    print(f'Exec Router statement: {statement}')
+    exec(statement)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -48,5 +55,12 @@ async def redoc_html():
 
 @app.get("/")
 async def index(request: Request):
+    images = file.get_images('static/images/source')
     templates = Jinja2Templates(directory="static")
-    return templates.TemplateResponse("index.html", {"request": request, "title": app.title, "version": app.version})
+    return templates.TemplateResponse("index.html", 
+                                      {"request": request, "title": app.title, "version": app.version, "images": images})
+
+
+@app.on_event('startup')
+def load_model():
+    Models()

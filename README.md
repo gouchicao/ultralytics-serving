@@ -80,6 +80,7 @@ docker buildx build --platform=linux/arm64 --pull --rm -f Dockerfile -t wangjunj
 ```
 * --pull 始终尝试拉取最新版本的镜像
 * --rm 成功构建后删除中间容器
+* --push 构建完成后推送到 Docker Hub
 
 * [docker build](https://docs.docker.com/engine/reference/commandline/build/)
 * [docker buildx build](https://docs.docker.com/engine/reference/commandline/buildx_build/)
@@ -92,6 +93,16 @@ docker buildx build --platform=linux/arm64 --pull --rm -f Dockerfile -t wangjunj
 docker run --rm -it -p 80:80/tcp ultralytics-serving:amd64
 docker run --rm -it -p 80:80/tcp ultralytics-serving:arm64
 ```
+
+### curl
+```shell
+curl -X 'POST' \
+  'http://localhost:8000/detect/predict' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: multipart/form-data' \
+  -F 'file=@asserts/images/catdog.jpg;type=image/jpeg'
+```
+* [How to install JQ on Mac on the command line?](https://stackoverflow.com/questions/37668134/how-to-install-jq-on-mac-on-the-command-line)
 
 ## 开发
 ### 环境
@@ -138,6 +149,36 @@ output_name = session.get_outputs()[0].name
 * [ONNX Runtime Inference | session.run() multiprocessing](https://stackoverflow.com/questions/70803924/onnx-runtime-inference-session-run-multiprocessing)
 
 ### Python
+#### eval和exec的区别
+`eval()`和`exec()`都是Python内置函数，但它们的作用不同。
+
+`eval()`函数用于计算表达式的值，返回表达式计算的结果。例如：
+
+```python
+x = 5
+y = 3
+result = eval('x + y')
+print(result)
+```
+
+这个例子中，`eval()`函数计算字符串`'x + y'`的值，并将结果赋给变量`result`，最后输出`8`。
+
+`exec()`函数用于执行一段Python代码，它没有返回值。例如：
+
+```python
+x = 5
+y = 3
+code = """
+result = x + y
+print(result)
+"""
+exec(code)
+```
+
+这个例子中，我们定义了一个字符串`code`，其中包含两个语句。然后我们用`exec()`函数执行了这个字符串，这样就会执行其中的两个语句，并输出结果`8`。
+
+简而言之，`eval()`计算表达式的值并返回结果，而`exec()`执行一段Python代码，没有返回值。
+
 #### 持久化保存临时文件
 ```py
 file = tempfile.NamedTemporaryFile(delete=False)
@@ -189,10 +230,72 @@ print(f"Predict {toc - tic:0.4f} seconds")
 ```
 * [Python Timer Functions: Three Ways to Monitor Your Code](https://realpython.com/python-timer/)
 
+#### 加载 yaml 文件
+```py
+config = yaml.load(open("config.yaml", "r"), Loader=yaml.FullLoader)
+```
+* [Python YAML: How to Load, Read, and Write YAML](https://python.land/data-processing/python-yaml)
+
 #### gunicorn
 * [loading models in FastAPI projects at startup](https://stackoverflow.com/questions/65636962/loading-models-in-fastapi-projects-at-startup)
 
+#### 使用 OpenCV 移除图像中的黑色线段，仅保留红色数字
+```python
+import cv2
+
+# 加载图像
+img = cv2.imread('image.jpg')
+
+# 将图像转换为HSV颜色空间
+hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+# 定义红色数字的HSV范围
+lower_red = (0, 100, 100)
+upper_red = (10, 255, 255)
+
+# 创建掩码，仅保留红色数字
+mask = cv2.inRange(hsv, lower_red, upper_red)
+
+# 移除黑色线段
+kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+dilated_mask = cv2.dilate(mask, kernel, iterations=2)
+eroded_mask = cv2.erode(dilated_mask, kernel, iterations=2)
+
+# 应用掩码
+result = cv2.bitwise_and(img, img, mask=eroded_mask)
+
+# 显示结果
+cv2.imshow('Result', result)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+```
+
+在这个例子中，我们首先加载图像，然后将其转换为HSV颜色空间。然后，我们定义红色数字的HSV范围，并创建一个掩码，仅保留红色数字。接下来，我们使用形态学操作（膨胀和腐蚀）移除黑色线段。最后，我们将掩码应用于原始图像，并显示结果。
+
 ### FastAPI
+#### 在Swagger UI中隐藏接口
+要在Swagger UI中隐藏某个接口，可以在FastAPI中使用装饰器`@app.delete`，`@app.put`，`@app.post`，`@app.get`，`@app.patch`等来定义路由。例如：
+
+```python
+@app.get("/items/{item_id}", tags=["items"], summary="Get an item")
+async def read_item(item_id: int):
+    return {"item_id": item_id, "name": "Fake Item"}
+
+@app.post("/items/", tags=["items"], summary="Create an item", deprecated=True)
+async def create_item(item: Item):
+    return item
+```
+
+在上面的示例中，`@app.post`装饰器中使用了`deprecated=True`参数，表示这个接口已经过时。在Swagger UI中，这个接口将被标记为过时，并显示警告。如果想完全隐藏这个接口，可以在装饰器中添加`include_in_schema=False`参数。例如：
+
+```python
+@app.post("/items/", tags=["items"], summary="Create an item", include_in_schema=False)
+async def create_item(item: Item):
+    return item
+```
+
+这样，在Swagger UI中就不会显示这个接口。
+
 #### OpenCV 直接读取 UploadFile
 ```py
 @app.post("/analyze", response_model=Analyzer)
@@ -370,6 +473,24 @@ async def redoc_html():
 ```
 * [How to make an image center (vertically & horizontally) inside a bigger div ](https://stackoverflow.com/questions/388180/how-to-make-an-image-center-vertically-horizontally-inside-a-bigger-div)
 
+### Docker & Dockerfile
+* [Dockerfile reference](https://docs.docker.com/engine/reference/builder/)
+* [docker build](https://docs.docker.com/engine/reference/commandline/build/)
+* [Dockerfile reference - ARG variable definition](https://docs.docker.com/engine/reference/builder/#arg)
+* [docker buildx build](https://docs.docker.com/engine/reference/commandline/buildx_build/)
+
+#### .dockerignore
+```
+**/.DS_Store # 构建 Docker 镜像时忽略所有目录下的 .DS_Store 文件。
+```
+
+### Jupyter Notebook
+#### 显示图片
+```py
+from IPython.display import Image
+display(Image(filename='test.png'))
+```
+* [How can I display an image from a file in Jupyter Notebook?](https://stackoverflow.com/questions/11854847/how-can-i-display-an-image-from-a-file-in-jupyter-notebook)
 
 ## 参考资料
 * [FastAPI](https://fastapi.tiangolo.com/zh/)
@@ -385,3 +506,12 @@ async def redoc_html():
 * [python](https://hub.docker.com/_/python)
 * [nvidia/cuda](https://hub.docker.com/r/nvidia/cuda)
 * [EmojiDB](https://emojidb.org)
+* [YAML](https://yaml.org)
+* [YAML - Array & collection](https://www.w3schools.io/file/yaml-arrays/)
+* [numpy数组升维函数expand_dims()](https://www.cnblogs.com/easternE/p/16622557.html)
+* [Removing noisy lines from image - opencv - python](https://dsp.stackexchange.com/questions/52089/removing-noisy-lines-from-image-opencv-python)
+* [Having trouble understanding the code for this part. #7769](https://github.com/ultralytics/yolov5/issues/7769)
+* [Introduction to OpenCV inRange](https://www.educba.com/opencv-inrange/)
+* [How to detect two different colors using `cv2.inRange` in Python-OpenCV?](https://stackoverflow.com/questions/48109650/how-to-detect-two-different-colors-using-cv2-inrange-in-python-opencv)
+* [YOLO Classify](https://docs.ultralytics.com/tasks/classify/?h=classify)
+* [MNIST 手写数字识别](https://kittenbot.readthedocs.io/Tensorflow/MnistTraining.html)

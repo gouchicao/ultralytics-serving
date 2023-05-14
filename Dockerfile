@@ -7,7 +7,7 @@ ENV APP_HOME=/ultralytics-serving
 WORKDIR ${APP_HOME}
 
 # 提前安装，因为 cpu 版本需要指定 index-url。
-RUN pip install --no-cache-dir torch torchvision torchaudio \
+RUN pip install --no-cache-dir torch torchvision \
     --index-url https://download.pytorch.org/whl/cpu
 
 COPY ./requirements.txt ${APP_HOME}/requirements.txt
